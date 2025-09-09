@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Camera, MapPin, AlertCircle, Clock, CheckCircle2,
-  BarChart3, Users, Settings, LogOut
-} from 'lucide-react';
+import { Camera, MapPin, AlertCircle, Clock, CheckCircle2, BarChart3, Users, Settings, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import axios from 'axios';
+import { supabase } from '../lib/supabase'; // Adjust the import path based on your project structure
+
+type Report = {
+  id: number;
+  type: string;
+  location: string;
+  status: string;
+  date: string;
+  imageUrl?: string;
+};
 
 const Dashboard = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     resolved: 0,
@@ -17,27 +22,27 @@ const Dashboard = () => {
     responseRate: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('drainage');
-  const [prediction, setPrediction] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Fetch data from Supabase
+  // Fetch data from Supabase when the component mounts
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+
       try {
+        // Fetch recent reports (limited to 3 for display)
         const { data: reportsData, error: reportsError } = await supabase
-          .from('issues')
+          .from('issues') // Assumes your table is named 'issues'
           .select('id, type, location, status, date, imageUrl')
           .order('date', { ascending: false })
           .limit(3);
 
         if (reportsError) throw reportsError;
-        setReports(reportsData || []);
+        setReports(Array.isArray(reportsData) ? reportsData : []);
 
+        // Fetch all reports for statistics
         const { data: allReports, error: allReportsError } = await supabase
           .from('issues')
           .select('status');
@@ -45,8 +50,8 @@ const Dashboard = () => {
         if (allReportsError) throw allReportsError;
 
         const total = allReports.length;
-        const resolved = allReports.filter((r) => r.status === 'resolved').length;
-        const inProgress = allReports.filter((r) => r.status === 'in_progress').length;
+        const resolved = allReports.filter((report) => report.status === 'resolved').length;
+        const inProgress = allReports.filter((report) => report.status === 'in_progress').length;
         const responseRate = total > 0 ? ((resolved + inProgress) / total * 100).toFixed(1) : 0;
 
         setStats({
@@ -66,40 +71,36 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  const handleTabChange = (tab) => {
+  // Handle navigation based on selected tab
+  const handleTabChange = (tab: string) => {
     setSelectedTab(tab);
     switch (tab) {
-      case 'report': navigate('/report'); break;
-      case 'reports': navigate('/my-reports'); break;
-      case 'community': navigate('/community'); break;
-      case 'settings': navigate('/settings'); break;
-      default: navigate('/');
+      case 'report':
+        navigate('/report'); // Links to ReportIssue component
+        break;
+      case 'reports':
+        navigate('/my-reports');
+        break;
+      case 'community':
+        navigate('/community');
+        break;
+      case 'settings':
+        navigate('/settings');
+        break;
+      case 'overview':
+      default:
+        navigate('/');
     }
   };
 
-  const handleScanImage = async () => {
-    if (!selectedImage || !selectedCategory) {
-      alert("Please select both an image and category.");
-      return;
-    }
+  // Render loading or error states
+  if (loading) {
+    return <div className="text-center p-8">Loading...</div>;
+  }
 
-    const formData = new FormData();
-    formData.append("image", selectedImage);
-    formData.append("category", selectedCategory);
-
-    try {
-      const response = await axios.post("http://localhost:5000/predict", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setPrediction(response.data);
-    } catch (error) {
-      console.error("Prediction error:", error);
-      alert("Failed to connect to backend.");
-    }
-  };
-
-  if (loading) return <div className="text-center p-8">Loading...</div>;
-  if (error) return <div className="text-center p-8 text-red-600">{error}</div>;
+  if (error) {
+    return <div className="text-center p-8 text-red-600">{error}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -144,41 +145,8 @@ const Dashboard = () => {
           <p className="mt-2 text-gray-600">Here's what's happening in your area</p>
         </div>
 
-        {/* AI Scan Section */}
-        <div className="mt-8 bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Scan Civic Issue using AI</h2>
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <input type="file" onChange={(e) => setSelectedImage(e.target.files[0])} />
-            <select
-              className="border px-3 py-2 rounded"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="drainage">Drainage</option>
-              <option value="pothole">Pothole</option>
-              <option value="garbage_waste">Garbage Waste</option>
-            </select>
-            <button
-              onClick={handleScanImage}
-              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-            >
-              Scan
-            </button>
-          </div>
-
-          {prediction && (
-            <div className="mt-4 p-4 bg-gray-100 rounded">
-              <p><strong>Match:</strong> {prediction.is_match ? 'Yes ✅' : 'No ❌'}</p>
-              <p><strong>Probability:</strong> {(prediction.probability * 100).toFixed(2)}%</p>
-              {prediction.severity && (
-                <p><strong>Severity:</strong> {prediction.severity}</p>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 mt-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[
             { label: 'Total Reports', value: stats.total, icon: AlertCircle },
             { label: 'Resolved', value: stats.resolved, icon: CheckCircle2 },
@@ -204,7 +172,7 @@ const Dashboard = () => {
             {reports.map((report) => (
               <div key={report.id} className="bg-gray-50 rounded-lg overflow-hidden">
                 <img
-                  src={report.imageUrl || 'https://via.placeholder.com/400x300'}
+                  src={report.imageUrl || 'https://via.placeholder.com/400x300'} // Fallback image
                   alt={report.type}
                   className="w-full h-48 object-cover"
                 />

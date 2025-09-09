@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind directives removed because build tool does not support them */
 
 /* Container for all complaints */
 .complaints-container {

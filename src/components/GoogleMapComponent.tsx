@@ -8,7 +8,7 @@ const containerStyle = {
 };
 
 const defaultCenter = {
-  lat: 11.0168, // Coimbatore, India (adjust as needed)
+  lat: 11.0168, 
   lng: 76.9558,
 };
 
