@@ -35,7 +35,7 @@ const GoogleMapComponent: React.FC<GoogleMapComponentProps> = ({ onLocationSelec
   }, [onLocationSelect]);
 
   return (
-    <LoadScript googleMapsApiKey="AIzaSyBHTAoCzVWQgkiorU-aIFhaPbEwqIV4lGI">
+    <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={markerPosition}

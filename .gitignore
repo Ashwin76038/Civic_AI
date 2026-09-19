@@ -54,3 +54,12 @@ Thumbs.db
 
 models/vs/
 
+
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+uploads/
+models/uploads/
+.venv/

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Eye, Edit3, Trash2, MapPin, Calendar, AlertTriangle, CheckCircle, Clock, Filter, Search, Download, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Eye, Edit3, Trash2, MapPin, Calendar, AlertTriangle, Filter, Search, RefreshCw } from 'lucide-react';
 import api from "../lib/api"; // Import the same API instance as TrackComplaints
 
 interface Complaint {
@@ -181,7 +181,7 @@ const AdminTrackComplaints: React.FC<AdminTrackComplaintsProps> = ({ onBack }) =
 
     try {
       console.log(`📝 Admin - Updating complaint ${selectedComplaint._id}...`);
-      const response = await api.patch(`/complaints/${selectedComplaint._id}`, editForm);
+      await api.patch(`/complaints/${selectedComplaint._id}`, editForm);
 
       if (isMountedRef.current) {
         // Update local state
@@ -454,7 +454,6 @@ const AdminTrackComplaints: React.FC<AdminTrackComplaintsProps> = ({ onBack }) =
                   </div>
                 ) : (
                   filteredComplaints.map((complaint) => {
-                    const imageUrl = getImageUrl(complaint.imageUrl);
                     return (
                       <div
                         key={complaint._id}

@@ -1,3 +1,4 @@
+import api from '../lib/api';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, Upload, MapPin, AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -200,38 +201,24 @@ const ReportIssue: React.FC = () => {
       toast.error('Please select a location on the map');
       return;
     }
-    if (!aiAnalysis) {
-      toast.error('Please scan the image to confirm the issue');
-      return;
-    }
-    if (!isModelServerOnline) {
-      toast.error('AI Model Server is offline. Cannot submit report.');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('image', image);
       formData.append('type', issueType);
-      formData.append('latitude', location.lat.toString());
-      formData.append('longitude', location.lng.toString());
+      formData.append('location', `${location.lat},${location.lng}`);
       formData.append('address', address);
       formData.append('description', description);
-      if (aiAnalysis.is_match) {
+      if (aiAnalysis?.is_match) {
         formData.append('ai_probability', aiAnalysis.probability.toString());
         formData.append('ai_severity', aiAnalysis.severity || '');
       } else {
         formData.append('ai_probability', '0');
       }
 
-      // Log form data for debugging
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-
-      // Submit to the AI model server (port 5001) instead of relative URL
-      const response = await modelApi.post('/reports', formData, {
+      // Persist reports through the authenticated main API.
+      const response = await api.post('/reports', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -513,9 +500,9 @@ const ReportIssue: React.FC = () => {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || !image || !location || !aiAnalysis || !isModelServerOnline}
+              disabled={isSubmitting || !image || !location}
               className={`w-full flex justify-center items-center py-4 px-6 rounded-2xl shadow-lg text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 ${
-                isSubmitting || !image || !location || !aiAnalysis || !isModelServerOnline
+                isSubmitting || !image || !location
                   ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
                   : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 hover:shadow-green-900/40'
               }`}
@@ -546,11 +533,11 @@ const ReportIssue: React.FC = () => {
               </div>
               <div className="flex items-center">
                 <div className={`w-3 h-3 rounded-full mr-2 ${aiAnalysis ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                <span className={aiAnalysis ? 'text-green-400' : 'text-gray-400'}>AI Verification</span>
+                <span className={aiAnalysis ? 'text-green-400' : 'text-gray-400'}>Optional image scan</span>
               </div>
               <div className="flex items-center">
                 <div className={`w-3 h-3 rounded-full mr-2 ${isModelServerOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className={isModelServerOnline ? 'text-green-400' : 'text-red-400'}>Server</span>
+                <span className={isModelServerOnline ? 'text-green-400' : 'text-red-400'}>Optional model server</span>
               </div>
             </div>
           </div>

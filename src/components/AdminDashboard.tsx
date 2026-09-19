@@ -1,4 +1,4 @@
-import React from 'react';
+import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Shield, LogOut } from 'lucide-react';
 
@@ -9,7 +9,11 @@ const AdminDashboard = () => {
     navigate('/admin/track-complaints');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await api.post("/logout");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    localStorage.removeItem("isAdmin");
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     navigate('/login');

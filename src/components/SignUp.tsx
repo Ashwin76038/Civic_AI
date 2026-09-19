@@ -18,6 +18,7 @@ const SignUp = () => {
     e.preventDefault();
     setError("");
 
+    if (formData.password.length < 12) { setError("Use at least 12 characters for your password"); return; }
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -25,11 +26,11 @@ const SignUp = () => {
 
     try {
       // Send signup request to the server
-      const response = await api.post("/signup", {
+      const response = await api.post("/register", {
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        location: formData.location,
+        neighborhood: formData.location,
         role: "user", // Set default role to user
       });
 
@@ -145,6 +146,8 @@ const SignUp = () => {
                   id="password"
                   name="password"
                   type="password"
+                  minLength={12}
+                  maxLength={128}
                   required
                   className="mt-1 block w-full px-3 py-2 bg-black border border-purple-700/40 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-500"
                   value={formData.password}
@@ -166,6 +169,8 @@ const SignUp = () => {
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
+                  minLength={12}
+                  maxLength={128}
                   required
                   className="mt-1 block w-full px-3 py-2 bg-black border border-purple-700/40 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-500"
                   value={formData.confirmPassword}

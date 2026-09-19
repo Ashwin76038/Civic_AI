@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Camera, MapPin, AlertCircle, Clock, CheckCircle2, BarChart3, Users, Settings, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase'; // Adjust the import path based on your project structure

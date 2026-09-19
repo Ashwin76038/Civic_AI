@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 # Enhanced CORS configuration
 CORS(app, resources={
@@ -48,7 +49,7 @@ CORS(app, resources={
 load_dotenv()
 
 # MongoDB Atlas connection - FIXED to match app.py
-MONGO_URI = os.getenv("MONGO_URI")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 try:
     if "localhost" in MONGO_URI:
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
@@ -237,113 +238,6 @@ def predict():
             os.remove(image_path)
             logger.info(f"Removed temporary file {image_path}")
 
-@app.route('/reports', methods=['POST'])
-def submit_report():
-    image_path = None
-    try:
-        logger.info(f"Report submission endpoint hit at {datetime.utcnow()}")
-        
-        # Check for required fields
-        if 'image' not in request.files:
-            return jsonify({'error': 'No image provided'}), 400
-        image_file = request.files['image']
-        if image_file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-
-        # Get other form fields
-        issue_type = request.form.get('type')
-        latitude = request.form.get('latitude')
-        longitude = request.form.get('longitude')
-        address = request.form.get('address', '')
-        description = request.form.get('description', '')
-        ai_probability = request.form.get('ai_probability', '0')
-        ai_severity = request.form.get('ai_severity', '')
-
-        # Validate required fields
-        if not issue_type or not latitude or not longitude:
-            return jsonify({'error': 'Type, latitude, and longitude are required'}), 400
-
-        # Save the image to uploads directory (permanent storage)
-        upload_dir = os.path.join(base_dir, 'uploads')
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        # Generate unique filename
-        import uuid
-        unique_filename = f"{uuid.uuid4().hex}_{image_file.filename}"
-        image_path = os.path.join(upload_dir, unique_filename)
-        image_file.save(image_path)
-        logger.info(f"Saved image to {image_path}")
-
-        # Prepare report data with location as a dictionary and image filename
-        report_data = {
-            'type': issue_type,
-            'location': {
-                'latitude': float(latitude), 
-                'longitude': float(longitude), 
-                'address': address
-            },
-            'description': description,
-            'ai_probability': float(ai_probability),
-            'ai_severity': ai_severity,
-            'image_filename': unique_filename,  # Store the unique filename
-            'submitted_at': datetime.utcnow(),
-            'status': 'pending'
-        }
-
-        # Insert into MongoDB
-        if issues_collection is None:
-            return jsonify({'error': 'Database connection not available'}), 503
-            
-        result = issues_collection.insert_one(report_data)
-        logger.info(f"Report saved to MongoDB with ID: {result.inserted_id}")
-
-        return jsonify({
-            "message": "Report submitted successfully", 
-            "id": str(result.inserted_id)
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error submitting report: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return jsonify({'error': f'Failed to submit report: {str(e)}'}), 500
-        
-    # Note: Don't delete the image file here since it needs to be permanently stored
-
-@app.route('/complaints', methods=['GET'])
-def complaints():
-    try:
-        logger.info("Fetching complaints from database")
-        if issues_collection is None:
-            return jsonify({'error': 'Database connection not available'}), 503
-            
-        complaints = list(issues_collection.find().sort("submitted_at", -1))
-        
-        # Transform the data to match what React expects
-        for complaint in complaints:
-            complaint["_id"] = str(complaint["_id"])
-            
-            # Add title if missing (use type as title)
-            if "title" not in complaint and "type" in complaint:
-                complaint["title"] = complaint["type"].replace("_", " ").title()
-            
-            # Convert image_filename to imageUrl if needed
-            if "image_filename" in complaint and "imageUrl" not in complaint:
-                complaint["imageUrl"] = f"/uploads/{complaint['image_filename']}"
-            
-            # Add status if missing
-            if "status" not in complaint:
-                complaint["status"] = "Open"
-            
-            # Use submitted_at as created_at if needed
-            if "submitted_at" in complaint and "created_at" not in complaint:
-                complaint["created_at"] = complaint["submitted_at"]
-        
-        return jsonify(complaints), 200
-    except Exception as e:
-        logger.error(f"Error fetching complaints: {e}")
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/model-info', methods=['GET'])
 def model_info():
     """Detailed model information endpoint"""
@@ -457,4 +351,4 @@ if __name__ == '__main__':
         logger.info("✅ All models loaded successfully. Starting server...")
         print("✅ All AI models loaded successfully!")
     
-    app.run(debug=True, host='localhost', port=5001)
+    app.run(debug=False, host='localhost', port=5001)

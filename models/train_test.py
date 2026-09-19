@@ -12,7 +12,7 @@ from PIL import Image
 import numpy as np
 
 # Define paths and parameters
-processed_dataset_path = "C:\\Users\\Admin\\Documents\\Project civic\\Civic\\project\\models\\processed_dataset"
+processed_dataset_path = os.path.join(os.path.dirname(__file__), "processed_dataset")
 categories = ["drainage", "pothole", "garbage_waste"]
 batch_size = 8
 num_epochs = 20
