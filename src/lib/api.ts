@@ -13,7 +13,7 @@ const api = axios.create({
 // Add request interceptor to log requests (helpful for debugging)
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("adminToken") || localStorage.getItem("token");
+    const token = localStorage.getItem("token");
     if (token) config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;

@@ -1,3 +1,4 @@
+import { saveSession } from '../lib/session.mjs';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Camera } from 'lucide-react';
@@ -30,8 +31,7 @@ const Login = () => {
       const data = response.data as LoginResponse;
 
       if (data.success) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('role', data.role); // Store user role
+        saveSession(localStorage, data.token, data.role);
 
         // Redirect based on role
         if (data.role === 'admin') {

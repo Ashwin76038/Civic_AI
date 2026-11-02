@@ -1,10 +1,11 @@
+import { clearSession } from '../lib/session.mjs';
 import { useState, useEffect } from 'react';
 import { Camera, MapPin, AlertCircle, Clock, CheckCircle2, BarChart3, Users, Settings, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase'; // Adjust the import path based on your project structure
+import api from '../lib/api';
 
 type Report = {
-  id: number;
+  id: string;
   type: string;
   location: string;
   status: string;
@@ -25,34 +26,27 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Fetch data from Supabase when the component mounts
+  // Fetch account-scoped reports when the component mounts
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch recent reports (limited to 3 for display)
-        const { data: reportsData, error: reportsError } = await supabase
-          .from('issues') // Assumes your table is named 'issues'
-          .select('id, type, location, status, date, imageUrl')
-          .order('date', { ascending: false })
-          .limit(3);
-
-        if (reportsError) throw reportsError;
-        setReports(Array.isArray(reportsData) ? reportsData : []);
-
-        // Fetch all reports for statistics
-        const { data: allReports, error: allReportsError } = await supabase
-          .from('issues')
-          .select('status');
-
-        if (allReportsError) throw allReportsError;
-
+        // Read the same account-scoped API used by report submission and tracking.
+        const response = await api.get('/complaints');
+        const allReports = response.data;
+        if (!Array.isArray(allReports)) throw new Error('Unexpected report response');
+        setReports(allReports.slice(0, 3).map(report => ({
+          id: report._id, type: report.type, status: report.status,
+          location: report.location?.address || `${report.location?.latitude}, ${report.location?.longitude}`,
+          date: report.submitted_at || report.created_at,
+          imageUrl: report.imageUrl ? `${api.defaults.baseURL}${report.imageUrl}` : undefined,
+        })));
         const total = allReports.length;
-        const resolved = allReports.filter((report) => report.status === 'resolved').length;
-        const inProgress = allReports.filter((report) => report.status === 'in_progress').length;
-        const responseRate = total > 0 ? ((resolved + inProgress) / total * 100).toFixed(1) : 0;
+        const resolved = allReports.filter(report => report.status === 'Resolved').length;
+        const inProgress = allReports.filter(report => report.status === 'In Progress').length;
+        const responseRate = total ? ((resolved + inProgress) / total * 100) : 0;
 
         setStats({
           total,
@@ -71,6 +65,13 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  const handleLogout = async () => {
+    try { await api.post('/logout'); }
+    catch { setError('Server sign-out failed. Close this browser to clear its session cookie.'); return; }
+    clearSession(localStorage);
+    navigate('/login');
+  };
+
   // Handle navigation based on selected tab
   const handleTabChange = (tab: string) => {
     setSelectedTab(tab);
@@ -79,7 +80,7 @@ const Dashboard = () => {
         navigate('/report'); // Links to ReportIssue component
         break;
       case 'reports':
-        navigate('/my-reports');
+        navigate('/track-complaints');
         break;
       case 'community':
         navigate('/community');
@@ -89,7 +90,7 @@ const Dashboard = () => {
         break;
       case 'overview':
       default:
-        navigate('/');
+        navigate('/dashboard');
     }
   };
 
@@ -115,8 +116,6 @@ const Dashboard = () => {
             { name: 'Overview', icon: BarChart3, tab: 'overview' },
             { name: 'Report Issue', icon: Camera, tab: 'report' },
             { name: 'My Reports', icon: AlertCircle, tab: 'reports' },
-            { name: 'Community', icon: Users, tab: 'community' },
-            { name: 'Settings', icon: Settings, tab: 'settings' },
           ].map((item) => (
             <button
               key={item.tab}
@@ -132,7 +131,7 @@ const Dashboard = () => {
             </button>
           ))}
         </nav>
-        <button className="absolute bottom-8 w-full flex items-center px-6 py-3 text-sm text-red-600 hover:bg-red-50">
+        <button onClick={handleLogout} className="absolute bottom-8 w-full flex items-center px-6 py-3 text-sm text-red-600 hover:bg-red-50">
           <LogOut className="h-5 w-5 mr-3" />
           Sign Out
         </button>
@@ -142,16 +141,16 @@ const Dashboard = () => {
       <div className="ml-64 p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Welcome back, User!</h1>
-          <p className="mt-2 text-gray-600">Here's what's happening in your area</p>
+          <p className="mt-2 text-gray-600">Latest 500 accessible reports at most; counts and shares cover this returned queue</p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[
-            { label: 'Total Reports', value: stats.total, icon: AlertCircle },
+            { label: 'Reports in queue', value: stats.total, icon: AlertCircle },
             { label: 'Resolved', value: stats.resolved, icon: CheckCircle2 },
             { label: 'In Progress', value: stats.inProgress, icon: Clock },
-            { label: 'Response Rate', value: `${stats.responseRate}%`, icon: BarChart3 },
+            { label: 'In progress or resolved', value: `${stats.responseRate.toFixed(1)}%`, icon: BarChart3 },
           ].map((stat, index) => (
             <div key={index} className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between">
@@ -172,7 +171,7 @@ const Dashboard = () => {
             {reports.map((report) => (
               <div key={report.id} className="bg-gray-50 rounded-lg overflow-hidden">
                 <img
-                  src={report.imageUrl || 'https://via.placeholder.com/400x300'} // Fallback image
+                  src={report.imageUrl} // Fallback image
                   alt={report.type}
                   className="w-full h-48 object-cover"
                 />
@@ -185,9 +184,9 @@ const Dashboard = () => {
                   <div className="flex items-center justify-between mt-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${
-                        report.status === 'resolved'
+                        report.status === 'Resolved'
                           ? 'bg-green-100 text-green-800'
-                          : report.status === 'in_progress'
+                          : report.status === 'In Progress'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}
