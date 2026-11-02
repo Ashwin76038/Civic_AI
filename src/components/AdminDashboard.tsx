@@ -1,3 +1,4 @@
+import { clearSession } from '../lib/session.mjs';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Shield, LogOut } from 'lucide-react';
@@ -11,11 +12,7 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => {
     await api.post("/logout");
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminUser");
-    localStorage.removeItem("isAdmin");
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
+    clearSession(localStorage);
     navigate('/login');
   };
 

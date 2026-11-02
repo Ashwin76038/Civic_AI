@@ -106,12 +106,12 @@ const ReportIssue: React.FC = () => {
       
       if (result.is_match) {
         toast.success(
-          `Confirmed: This is a ${category} with ${(result.probability * 100).toFixed(1)}% confidence.`,
+          `Model prediction: ${category} with ${(result.probability * 100).toFixed(1)}% model score.`,
           { duration: 5000 }
         );
       } else {
         toast.error(
-          `This does not appear to be a ${category} (${(result.probability * 100).toFixed(1)}% confidence).`,
+          `This does not appear to be a ${category} (${(result.probability * 100).toFixed(1)}% model score).`,
           { duration: 5000 }
         );
       }
@@ -234,7 +234,7 @@ const ReportIssue: React.FC = () => {
         setDescription('');
         setAiAnalysis(null);
         // Navigate back to dashboard or reports page
-        navigate('/dashboard');
+        navigate('/track-complaints');
       } else {
         throw new Error(`Server responded with status: ${response.status}`);
       }
@@ -242,8 +242,7 @@ const ReportIssue: React.FC = () => {
       console.error('Submit error:', error);
       
       if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        toast.error('Cannot connect to AI Model Server. Please ensure it\'s running on port 5001.');
-        setIsModelServerOnline(false);
+        toast.error('Cannot connect to the report API. Check the configured API service.');
       } else if (error.response) {
         // Server responded with an error
         const errorMessage = error.response.data?.error || error.response.data?.message || 'Server error occurred';
@@ -275,7 +274,7 @@ const ReportIssue: React.FC = () => {
           </div>
           <h2 className="text-4xl font-bold text-purple-400 mb-4">Report an Issue</h2>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-            Select a category, capture or upload a photo, select location on map, and scan to confirm
+            Select a category, capture or upload a photo, and select a location. The experimental image scan is optional.
           </p>
         </div>
 
@@ -399,7 +398,7 @@ const ReportIssue: React.FC = () => {
                     }`}
                     aria-label="Scan image"
                   >
-                    {isAnalyzing ? 'Analyzing Image...' : 'Scan & Verify Image'}
+                    {isAnalyzing ? 'Analyzing Image...' : 'Experimental image scan'}
                     {isAnalyzing ? (
                       <RefreshCw className="ml-3 h-5 w-5 animate-spin" aria-hidden="true" />
                     ) : (
@@ -419,10 +418,10 @@ const ReportIssue: React.FC = () => {
                       aiAnalysis.probability >= 0.7 ? (
                         <div className="space-y-2">
                           <p className="text-green-300 font-medium">
-                            ✅ Confirmed Match!
+                            Model predicts a match
                           </p>
                           <p className="text-sm text-gray-300">
-                            Confidence: {(aiAnalysis.probability * 100).toFixed(1)}%
+                            Uncalibrated model score: {(aiAnalysis.probability * 100).toFixed(1)}%
                           </p>
                           {aiAnalysis.severity && (
                             <p className="text-sm text-gray-300">
@@ -436,7 +435,7 @@ const ReportIssue: React.FC = () => {
                             ⚠️ Possible Match
                           </p>
                           <p className="text-sm text-gray-300">
-                            Image unclear ({(aiAnalysis.probability * 100).toFixed(1)}% confidence). Please upload a clearer photo.
+                            Image unclear ({(aiAnalysis.probability * 100).toFixed(1)}% model score). Please upload a clearer photo.
                           </p>
                         </div>
                       )
@@ -446,7 +445,7 @@ const ReportIssue: React.FC = () => {
                           ❌ No Match Found
                         </p>
                         <p className="text-sm text-gray-300">
-                          This doesn't appear to be a {issueType.replace('_', ' ')} ({(aiAnalysis.probability * 100).toFixed(1)}% confidence).
+                          This doesn't appear to be a {issueType.replace('_', ' ')} ({(aiAnalysis.probability * 100).toFixed(1)}% model score).
                         </p>
                       </div>
                     )}

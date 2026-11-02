@@ -1,3 +1,4 @@
+import { saveSession } from '../lib/session.mjs';
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Shield, Settings, Loader2 } from "lucide-react";
@@ -33,16 +34,15 @@ const AdminLogin = () => {
         [key: string]: any;
       };
 
-      console.log("📡 Login response:", data);
+
 
       if (response.status === 200 && data.user) {
         if (data.user.role === "admin") {
           console.log("✅ Admin login successful!");
 
           // ✅ Store admin info in localStorage
-          localStorage.setItem("isAdmin", "true");
-          if (data.token) localStorage.setItem("adminToken", data.token);
-          localStorage.setItem("adminUser", JSON.stringify(data.user));
+          if (!data.token) throw new Error("Missing session token");
+          saveSession(localStorage, data.token, "admin");
 
           navigate("/admin/dashboard");
         } else {
@@ -74,11 +74,7 @@ const AdminLogin = () => {
             infrastructure problems.
           </p>
 
-          <div className="mt-8 p-4 bg-purple-900/30 rounded-lg border border-purple-600/40">
-            <p className="text-sm text-purple-300 mb-2">🔐 Test Credentials:</p>
-            <p className="text-xs text-gray-400">Email: admin@gmail.com</p>
-            <p className="text-xs text-gray-400">Password: admin123</p>
-          </div>
+          <p className="mt-8 text-sm text-gray-300">Use an administrator account provisioned in the local database. No default account is created.</p>
         </div>
         <div className="absolute w-[500px] h-[500px] rounded-full bg-purple-600 blur-3xl opacity-30 animate-pulse"></div>
       </div>
